@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokemon TCG Card Browser</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== CSS CUSTOM PROPERTIES ===== */
+    :root {
+      --bg-deepest:   #080c14;
+      --bg-dark:      #0d1422;
+      --bg-card:      #111827;
+      --bg-elevated:  #1a2235;
+      --bg-hover:     #1e2a40;
+      --border:       #1f2d47;
+      --border-light: #2a3d5a;
+      --text-primary: #e8edf5;
+      --text-secondary: #8fa3be;
+      --text-muted:   #4d6280;
+      --gold:         #f0c040;
+      --gold-dim:     #a07c1a;
+      --gold-glow:    rgba(240,192,64,0.15);
+      --accent-blue:  #3b82f6;
+      --accent-blue-dim: #1e3a5f;
+      --sidebar-w:    260px;
+      --header-h:     68px;
+      --radius-sm:    6px;
+      --radius-md:    10px;
+      --radius-lg:    14px;
+      --radius-xl:    20px;
+      --shadow-card:  0 4px 24px rgba(0,0,0,0.5);
+      --shadow-hover: 0 8px 40px rgba(0,0,0,0.7);
+      --transition:   0.18s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg-deepest);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; }
+    input { font-family: inherit; }
+    a { color: inherit; text-decoration: none; }
+
+    /* ===== HEADER ===== */
+    .header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--header-h);
+      background: linear-gradient(90deg, #090e1a 0%, #0f1827 60%, #0a1220 100%);
+      border-bottom: 1px solid var(--border);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 20px;
+    }
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: radial-gradient(circle at 35% 35%, #ffe066, #f0c040 50%, #b8860b);
+      border-radius: 50%;
+      border: 2px solid #f0c040;
+      box-shadow: 0 0 12px rgba(240,192,64,0.4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      position: relative;
+    }
+    .logo-icon::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 0; right: 0;
+      height: 2px;
+      background: rgba(0,0,0,0.5);
+      transform: translateY(-50%);
+    }
+    .logo-text {
+      font-family: 'Cinzel', serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 20px rgba(240,192,64,0.3);
+    }
+    .logo-sub {
+      font-size: 10px;
+      color: var(--text-muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    /* Search */
+    .search-wrap {
+      flex: 1;
+      max-width: 460px;
+      position: relative;
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 15px;
+      pointer-events: none;
+    }
+    .search-input {
+      width: 100%;
+      padding: 9px 12px 9px 36px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 13px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .search-input::placeholder { color: var(--text-muted); }
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+    }
+    .search-clear {
+      position: absolute;
+      right: 10px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 16px;
+      padding: 2px 4px;
+      display: none;
+      transition: color var(--transition);
+    }
+    .search-clear:hover { color: var(--text-primary); }
+    .search-clear.visible { display: block; }
+
+    /* Sort control */
+    .sort-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .sort-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .sort-select {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      padding: 5px 28px 5px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .sort-select:hover { border-color: var(--gold); }
+    .sort-select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 2px rgba(240,192,64,0.15); }
+    .sort-select option { background: #1a2235; }
+
+    /* Rarity filter chips */
+    .rarity-filters {
+      display: flex;
+      gap: 6px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex-shrink: 0;
+    }
+    .rarity-filters::-webkit-scrollbar { display: none; }
+    .rarity-chip {
+      padding: 5px 11px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid transparent;
+      white-space: nowrap;
+      transition: all var(--transition);
+      opacity: 0.55;
+      letter-spacing: 0.3px;
+    }
+    .rarity-chip:hover { opacity: 0.85; transform: translateY(-1px); }
+    .rarity-chip.active { opacity: 1; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+
+    /* Stats pill */
+    .stats-pill {
+      flex-shrink: 0;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+    .stats-pill span { color: var(--gold); font-weight: 600; }
+
+    /* ===== LAYOUT ===== */
+    .app-body {
+      display: flex;
+      padding-top: var(--header-h);
+      min-height: 100vh;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      position: fixed;
+      top: var(--header-h);
+      bottom: 0;
+      left: 0;
+      overflow-y: auto;
+      background: var(--bg-dark);
+      border-right: 1px solid var(--border);
+      z-index: 100;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .sidebar-era {
+      padding: 14px 0 4px;
+    }
+    .era-label {
+      padding: 0 14px 6px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .set-btn {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      padding: 7px 14px;
+      gap: 9px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: left;
+      transition: all var(--transition);
+      position: relative;
+    }
+    .set-btn:hover {
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+    }
+    .set-btn.active {
+      background: var(--accent-blue-dim);
+      color: var(--text-primary);
+    }
+    .set-btn.active::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: var(--accent-blue);
+      border-radius: 0 2px 2px 0;
+    }
+    .set-btn-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .set-btn-count {
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--bg-elevated);
+      border-radius: 10px;
+      padding: 1px 6px;
+      flex-shrink: 0;
+    }
+    .set-btn.active .set-btn-count {
+      background: rgba(59,130,246,0.2);
+      color: #93bbf5;
+    }
+
+    /* ===== MAIN CONTENT ===== */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1;
+      padding: 24px;
+      min-width: 0;
+    }
+
+    /* Set header */
+    .set-header {
+      margin-bottom: 20px;
+    }
+    .set-title {
+      font-family: 'Cinzel', serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+    .set-meta {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .set-meta span { color: var(--text-secondary); }
+
+    /* Loading state */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 300px;
+      color: var(--text-muted);
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 300px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .empty-icon { font-size: 48px; opacity: 0.3; }
+
+    /* ===== CARD GRID ===== */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+      gap: 14px;
+    }
+
+    /* ===== POKEMON CARD ===== */
+    .poke-card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+      position: relative;
+    }
+    .poke-card:hover {
+      transform: translateY(-5px) scale(1.02);
+      box-shadow: var(--shadow-hover);
+      border-color: var(--border-light);
+      z-index: 2;
+    }
+    .poke-card:hover .card-overlay { opacity: 1; }
+
+    /* Rarity shimmer border for ultra-rare cards */
+    .poke-card.rarity-rainbow {
+      border-color: transparent;
+      background-clip: padding-box;
+    }
+    .poke-card.rarity-rainbow::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-lg);
+      padding: 1px;
+      background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #c77dff, #ff6b6b);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .card-img-wrap {
+      position: relative;
+      width: 100%;
+      padding-bottom: 139.5%; /* Pokemon card aspect ratio 63.5 × 88.5mm */
+      background: var(--bg-elevated);
+      overflow: hidden;
+    }
+    .card-img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+    .poke-card:hover .card-img { transform: scale(1.04); }
+
+    .card-img-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 11px;
+      text-align: center;
+      padding: 8px;
+    }
+    .placeholder-ball {
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(to bottom, var(--bg-elevated) 50%, var(--bg-dark) 50%);
+      border: 2px solid var(--border-light);
+      opacity: 0.4;
+    }
+
+    .card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.85) 100%);
+      opacity: 0;
+      transition: opacity var(--transition);
+      display: flex;
+      align-items: flex-end;
+      padding: 8px;
+    }
+    .overlay-hint {
+      font-size: 10px;
+      color: rgba(255,255,255,0.7);
+      letter-spacing: 0.5px;
+    }
+
+    .card-info {
+      padding: 8px 10px 10px;
+    }
+    .card-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 5px;
+    }
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+    }
+    .card-number {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+    .rarity-badge {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 80px;
+    }
+
+    /* ===== RARITY COLOR SYSTEM ===== */
+    /* Common */
+    .r-common { background: rgba(120,120,120,0.2); color: #aaa; border: 1px solid #555; }
+    /* Uncommon */
+    .r-uncommon { background: rgba(76,175,80,0.2); color: #81c784; border: 1px solid rgba(76,175,80,0.4); }
+    /* Rare */
+    .r-rare { background: rgba(33,150,243,0.2); color: #64b5f6; border: 1px solid rgba(33,150,243,0.4); }
+    /* Rare Holo & variants */
+    .r-rare-holo { background: rgba(156,39,176,0.2); color: #ce93d8; border: 1px solid rgba(156,39,176,0.4); }
+    /* Double Rare */
+    .r-double-rare { background: rgba(255,152,0,0.2); color: #ffb74d; border: 1px solid rgba(255,152,0,0.4); }
+    /* Ultra Rare / Illustration Rare */
+    .r-ultra { background: rgba(244,67,54,0.2); color: #ef9a9a; border: 1px solid rgba(244,67,54,0.35); }
+    /* Special Illustration / Hyper Rare / Rainbow */
+    .r-special {
+      background: linear-gradient(135deg,
+        rgba(255,107,107,0.25), rgba(255,217,61,0.25),
+        rgba(107,203,119,0.25), rgba(77,150,255,0.25),
+        rgba(199,125,255,0.25));
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    /* Promo */
+    .r-promo { background: rgba(0,188,212,0.2); color: #80deea; border: 1px solid rgba(0,188,212,0.4); }
+    /* LEGEND / Classic */
+    .r-legend { background: rgba(255,193,7,0.2); color: #ffe082; border: 1px solid rgba(255,193,7,0.4); }
+    /* ACE SPEC */
+    .r-ace { background: rgba(233,30,99,0.2); color: #f48fb1; border: 1px solid rgba(233,30,99,0.4); }
+    /* Radiant / Amazing / Shiny */
+    .r-shiny { background: rgba(100,200,255,0.15); color: #80ceff; border: 1px solid rgba(100,200,255,0.35); }
+    /* BREAK */
+    .r-break { background: rgba(255,87,34,0.2); color: #ffab91; border: 1px solid rgba(255,87,34,0.4); }
+    /* Unknown/None */
+    .r-none { background: var(--bg-elevated); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* ===== MODAL ===== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      backdrop-filter: blur(4px);
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-xl);
+      max-width: 640px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 80px rgba(0,0,0,0.8);
+      transform: translateY(20px) scale(0.97);
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .modal-backdrop.open .modal {
+      transform: translateY(0) scale(1);
+    }
+    .modal-inner {
+      display: flex;
+      gap: 0;
+    }
+    .modal-img-col {
+      flex-shrink: 0;
+      width: 240px;
+      position: relative;
+      background: var(--bg-deepest);
+      border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+      overflow: hidden;
+    }
+    .modal-img {
+      width: 100%;
+      display: block;
+    }
+    .modal-img-placeholder {
+      width: 100%;
+      padding-bottom: 139.5%;
+      position: relative;
+      background: var(--bg-elevated);
+    }
+    .modal-img-placeholder-inner {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      color: var(--text-muted);
+    }
+    .modal-info-col {
+      flex: 1;
+      padding: 28px 24px;
+      min-width: 0;
+    }
+    .modal-close {
+      position: absolute;
+      top: 14px; right: 14px;
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      transition: all var(--transition);
+      z-index: 10;
+      position: absolute;
+      top: 16px; right: 16px;
+    }
+    .modal-close:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+    .modal-card-name {
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+    .modal-set-name {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+    .modal-details {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .detail-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .detail-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      width: 70px;
+      flex-shrink: 0;
+    }
+    .detail-value {
+      font-size: 13px;
+      color: var(--text-primary);
+    }
+    .modal-rarity-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      letter-spacing: 0.3px;
+    }
+    .modal-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 16px 0;
+    }
+    .modal-nav {
+      display: flex;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .modal-nav-btn {
+      flex: 1;
+      padding: 8px 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-size: 12px;
+      transition: all var(--transition);
+      text-align: center;
+    }
+    .modal-nav-btn:hover:not(:disabled) {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      border-color: var(--border-light);
+    }
+    .modal-nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* ===== WELCOME / HOME STATE ===== */
+    .home-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 70vh;
+      gap: 16px;
+      text-align: center;
+      padding: 40px;
+    }
+    .home-ball {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(to bottom, #e53935 50%, #fff 50%);
+      border: 4px solid #333;
+      box-shadow: 0 0 40px rgba(229,57,53,0.3);
+      position: relative;
+      animation: float 3s ease-in-out infinite;
+    }
+    .home-ball::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      border: 4px solid #333;
+    }
+    .home-ball::before {
+      content: '';
+      position: absolute;
+      top: calc(50% - 2px);
+      left: 0; right: 0;
+      height: 4px;
+      background: #333;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .home-title {
+      font-family: 'Cinzel', serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--gold);
+      text-shadow: 0 0 30px rgba(240,192,64,0.3);
+    }
+    .home-sub {
+      color: var(--text-muted);
+      font-size: 14px;
+      max-width: 360px;
+      line-height: 1.6;
+    }
+    .home-stats {
+      display: flex;
+      gap: 20px;
+      margin-top: 8px;
+    }
+    .home-stat {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 22px;
+      text-align: center;
+    }
+    .home-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1;
+    }
+    .home-stat-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ===== SCROLLBAR (main) ===== */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 210px; }
+      .card-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    }
+    @media (max-width: 680px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .modal-inner { flex-direction: column; }
+      .modal-img-col { width: 100%; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+    }
+
+    /* ===== UTILITY ===== */
+    .hidden { display: none !important; }
+    .fade-in {
+      animation: fadeIn 0.25s ease forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text">Pokédex TCG</div>
+      <div class="logo-sub">Card Browser</div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input
+      class="search-input"
+      id="searchInput"
+      type="text"
+      placeholder="Search cards by name…"
+      autocomplete="off"
+    >
+    <button class="search-clear" id="searchClear" title="Clear search">✕</button>
+  </div>
+
+  <div class="rarity-filters" id="rarityFilters">
+    <button class="rarity-chip active r-none" data-rarity="all">All</button>
+    <button class="rarity-chip r-common" data-rarity="Common">Common</button>
+    <button class="rarity-chip r-uncommon" data-rarity="Uncommon">Uncommon</button>
+    <button class="rarity-chip r-rare" data-rarity="Rare">Rare</button>
+    <button class="rarity-chip r-rare-holo" data-rarity="Rare Holo">Holo</button>
+    <button class="rarity-chip r-double-rare" data-rarity="Double Rare">Double Rare</button>
+    <button class="rarity-chip r-ultra" data-rarity="Illustration Rare">Illus. Rare</button>
+    <button class="rarity-chip r-ultra" data-rarity="Ultra Rare">Ultra Rare</button>
+    <button class="rarity-chip r-special" data-rarity="Special Illustration Rare">SIR</button>
+    <button class="rarity-chip r-special" data-rarity="Hyper Rare">Hyper</button>
+    <button class="rarity-chip r-special" data-rarity="Rare Rainbow">Rainbow</button>
+    <button class="rarity-chip r-ace" data-rarity="ACE SPEC Rare">ACE SPEC</button>
+    <button class="rarity-chip r-promo" data-rarity="Promo">Promo</button>
+  </div>
+
+  <div class="sort-control">
+    <span class="sort-label">Sort</span>
+    <select class="sort-select" id="sortSelect" title="Sort cards by…">
+      <option value="number">Number ↑</option>
+      <option value="number-desc">Number ↓</option>
+      <option value="name">Name A–Z</option>
+      <option value="name-desc">Name Z–A</option>
+      <option value="rarity">Rarity ↑</option>
+      <option value="rarity-desc">Rarity ↓</option>
+    </select>
+  </div>
+
+  <div class="stats-pill" id="statsPill">
+    <span id="visibleCount">0</span> cards
+  </div>
+</header>
+
+<!-- APP BODY -->
+<div class="app-body">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <!-- MAIN -->
+  <main class="main" id="main">
+    <div class="home-view" id="homeView">
+      <div class="home-ball"></div>
+      <div class="home-title">Pokemon TCG Browser</div>
+      <div class="home-sub">Choose a set from the sidebar to explore cards. Search by name or filter by rarity to find what you're looking for.</div>
+      <div class="home-stats">
+        <div class="home-stat">
+          <div class="home-stat-value" id="homeSets">–</div>
+          <div class="home-stat-label">Sets</div>
+        </div>
+        <div class="home-stat">
+          <div class="home-stat-value" id="homeCards">–</div>
+          <div class="home-stat-label">Cards</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="setView" class="hidden">
+      <div class="set-header">
+        <div class="set-title" id="setTitle">Set Name</div>
+        <div class="set-meta" id="setMeta"></div>
+      </div>
+      <div id="cardArea">
+        <div class="loading" id="loadingState">
+          <div class="spinner"></div>
+          <div>Loading cards…</div>
+        </div>
+        <div class="card-grid" id="cardGrid"></div>
+        <div class="empty-state hidden" id="emptyState">
+          <div class="empty-icon">🔍</div>
+          <div>No cards match your filters</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- CARD DETAIL MODAL -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modal" role="dialog" aria-modal="true">
+    <button class="modal-close" id="modalClose" aria-label="Close">✕</button>
+    <div class="modal-inner">
+      <div class="modal-img-col" id="modalImgCol">
+        <!-- filled by JS -->
+      </div>
+      <div class="modal-info-col">
+        <div class="modal-card-name" id="modalName"></div>
+        <div class="modal-set-name" id="modalSetName"></div>
+        <div class="modal-divider"></div>
+        <div class="modal-details" id="modalDetails"></div>
+        <div class="modal-nav">
+          <button class="modal-nav-btn" id="modalPrev">← Previous</button>
+          <button class="modal-nav-btn" id="modalNext">Next →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================================================================
+// DATA — Sets are embedded. Cards are loaded per-set via XHR.
+// ===================================================================
+
+// Era grouping for sidebar
+const ERAS = {
+  'Scarlet & Violet': ['sv1','sv2','sv3','sv3pt5','sv4','sv4pt5','sv5','sv6','sv6pt5','sv7','sv8','sv8pt5','sv9','sv10','zsv10pt5','svp','sve'],
+  'Sword & Shield':   ['swsh1','swsh2','swsh3','swsh35','swsh4','swsh45','swsh5','swsh6','swsh7','swsh8','swsh9','swsh10','swsh11','swsh12','swsh12pt5','swsblastapro'],
+  'Sun & Moon':       ['sm1','sm2','sm3','sm35','sm4','sm5','sm6','sm7','sm75','sm8','sm9','sm10','sm11','sm115','sm12','sm_black_star_promos'],
+  'XY':               ['xy1','xy2','xy3','xy4','xy5','xy6','xy7','xy8','xy9','xy10','xy11','xy12','g1','dc1','me1','me2','me2pt5','mep'],
+  'Black & White':    ['bw1','bw2','bw3','bw4','bw5','bw6','bw7','bw8','bw9','bw10','bw11','dv1'],
+  'HeartGold SoulSilver': ['hgss1','hgss2','hgss3','hgss4','col1'],
+  'Diamond & Pearl':  ['dp1','dp2','dp3','dp4','dp5','dp6','dp7','pl1','pl2','pl3','pl4'],
+  'EX Series':        ['ex1','ex2','ex3','ex4','ex5','ex6','ex7','ex8','ex9','ex10','ex11','ex12','ex13','ex14','ex15','ex16','tk1a','tk1b','tk2a','tk2b'],
+  'e-Card':           ['ecard1','ecard2','ecard3'],
+  'Neo':              ['neo1','neo2','neo3','neo4'],
+  'Gym':              ['gym1','gym2'],
+  'Base Set Era':     ['base1','base2','base3','base5','base6','basep'],
+  'Celebrations':     ['cel25','cel25c'],
+  'Promos & Special': ['np','bp','pop1','pop2','pop3','pop4','pop5','pop6','pop7','pop8','pop9','det1','pgo','mcd23','mcd24'],
+  'Other':            [] // catch-all
+};
+
+// Sets with card JSON files available
+const AVAILABLE_SETS = ["base1","base2","base3","base5","base6","basep","bp","bw1","bw10","bw11","bw2","bw3","bw4","bw5","bw6","bw7","bw8","bw9","cel25","cel25c","col1","dc1","det1","dp1","dp2","dp3","dp4","dp5","dp6","dp7","dv1","ecard1","ecard2","ecard3","ex1","ex10","ex11","ex12","ex13","ex14","ex15","ex16","ex2","ex3","ex4","ex5","ex6","ex7","ex8","ex9","g1","gym1","gym2","hgss1","hgss2","hgss3","hgss4","mcd23","mcd24","me1","me2","me2pt5","mep","neo1","neo2","neo3","neo4","np","pgo","pl1","pl2","pl3","pl4","pop1","pop2","pop3","pop4","pop5","pop6","pop7","pop8","pop9","rsv10pt5","sm1","sm10","sm11","sm115","sm12","sm2","sm3","sm35","sm4","sm5","sm6","sm7","sm75","sm8","sm9","sv1","sv10","sv2","sv3","sv3pt5","sv4","sv4pt5","sv5","sv6","sv6pt5","sv7","sv8","sv8pt5","sv9","sve","svp","swsh1","swsh10","swsh11","swsh12","swsh12pt5","swsh2","swsh3","swsh35","swsh4","swsh45","swsh5","swsh6","swsh7","swsh8","swsh9","tk1a","tk1b","tk2a","tk2b","xy1","xy10","xy11","xy12","xy2","xy3","xy4","xy5","xy6","xy7","xy8","xy9","zsv10pt5"];
+
+// Set display names
+const SET_NAMES = {
+  "base1":"Base Set","base2":"Jungle","base3":"Fossil","base5":"Team Rocket","base6":"Legendary Collection","basep":"Wizards Black Star Promos","bp":"Best of Game","bw1":"Black & White","bw2":"Emerging Powers","bw3":"Noble Victories","bw4":"Next Destinies","bw5":"Dark Explorers","bw6":"Dragons Exalted","bw7":"Boundaries Crossed","bw8":"Plasma Storm","bw9":"Plasma Freeze","bw10":"Plasma Blast","bw11":"Legendary Treasures","cel25":"Celebrations","cel25c":"Celebrations: Classic","col1":"Call of Legends","dc1":"Double Crisis","det1":"Detective Pikachu","dp1":"Diamond & Pearl","dp2":"Mysterious Treasures","dp3":"Secret Wonders","dp4":"Great Encounters","dp5":"Majestic Dawn","dp6":"Legends Awakened","dp7":"Stormfront","dv1":"Dragon Vault","ecard1":"Expedition Base Set","ecard2":"Aquapolis","ecard3":"Skyridge","ex1":"Ruby & Sapphire","ex2":"Sandstorm","ex3":"Dragon","ex4":"Team Magma vs Team Aqua","ex5":"Hidden Legends","ex6":"FireRed & LeafGreen","ex7":"Team Rocket Returns","ex8":"Deoxys","ex9":"Emerald","ex10":"Unseen Forces","ex11":"Delta Species","ex12":"Legend Maker","ex13":"Holon Phantoms","ex14":"Crystal Guardians","ex15":"Dragon Frontiers","ex16":"Power Keepers","g1":"Generations","gym1":"Gym Heroes","gym2":"Gym Challenge","hgss1":"HeartGold & SoulSilver","hgss2":"HS Unleashed","hgss3":"HS Undaunted","hgss4":"HS Triumphant","mcd23":"McDonald's 2023","mcd24":"McDonald's 2024","me1":"Mega Evolution","me2":"Phantasmal Flames","me2pt5":"Ascended Heroes","mep":"Mega Evolution Promos","neo1":"Neo Genesis","neo2":"Neo Discovery","neo3":"Neo Revelation","neo4":"Neo Destiny","np":"Nintendo Black Star Promos","pgo":"Pokémon GO","pl1":"Platinum","pl2":"Rising Rivals","pl3":"Supreme Victors","pl4":"Arceus","pop1":"POP Series 1","pop2":"POP Series 2","pop3":"POP Series 3","pop4":"POP Series 4","pop5":"POP Series 5","pop6":"POP Series 6","pop7":"POP Series 7","pop8":"POP Series 8","pop9":"POP Series 9","rsv10pt5":"White Flare","sm1":"Sun & Moon","sm2":"Guardians Rising","sm3":"Burning Shadows","sm35":"Shining Legends","sm4":"Crimson Invasion","sm5":"Ultra Prism","sm6":"Forbidden Light","sm7":"Celestial Storm","sm75":"Dragon Majesty","sm8":"Lost Thunder","sm9":"Team Up","sm10":"Unbroken Bonds","sm11":"Unified Minds","sm115":"Hidden Fates","sm12":"Cosmic Eclipse","sv1":"Scarlet & Violet","sv2":"Paldea Evolved","sv3":"Obsidian Flames","sv3pt5":"151","sv4":"Paradox Rift","sv4pt5":"Paldean Fates","sv5":"Temporal Forces","sv6":"Twilight Masquerade","sv6pt5":"Shrouded Fable","sv7":"Stellar Crown","sv8":"Surging Sparks","sv8pt5":"Prismatic Evolutions","sv9":"Journey Together","sv10":"Destined Rivals","sve":"SV Energies","svp":"SV Black Star Promos","swsh1":"Sword & Shield","swsh2":"Rebel Clash","swsh3":"Darkness Ablaze","swsh35":"Champion's Path","swsh4":"Vivid Voltage","swsh45":"Shining Fates","swsh5":"Battle Styles","swsh6":"Chilling Reign","swsh7":"Evolving Skies","swsh8":"Fusion Strike","swsh9":"Brilliant Stars","swsh10":"Astral Radiance","swsh11":"Lost Origin","swsh12":"Silver Tempest","swsh12pt5":"Crown Zenith","tk1a":"EX Trainer Kit Latias","tk1b":"EX Trainer Kit Latios","tk2a":"EX Trainer Kit 2 Plusle","tk2b":"EX Trainer Kit 2 Minun","xy1":"XY","xy2":"Flashfire","xy3":"Furious Fists","xy4":"Phantom Forces","xy5":"Primal Clash","xy6":"Roaring Skies","xy7":"Ancient Origins","xy8":"BREAKthrough","xy9":"BREAKpoint","xy10":"Fates Collide","xy11":"Steam Siege","xy12":"Evolutions","zsv10pt5":"Black Bolt"
+};
+
+// ===================================================================
+// RARITY SYSTEM
+// ===================================================================
+function getRarityClass(rarity) {
+  if (!rarity || rarity === 'None') return 'r-none';
+  const r = rarity.toLowerCase();
+  if (r === 'common') return 'r-common';
+  if (r === 'uncommon') return 'r-uncommon';
+  if (r === 'promo') return 'r-promo';
+  if (r.includes('rainbow') || r.includes('hyper') || r.includes('special illustration')) return 'r-special';
+  if (r.includes('double rare') || r.includes('rare ultra') || r === 'rare holo vmax' || r === 'rare holo vstar') return 'r-double-rare';
+  if (r.includes('ultra rare') || r.includes('illustration rare')) return 'r-ultra';
+  if (r.includes('ace spec')) return 'r-ace';
+  if (r.includes('break')) return 'r-break';
+  if (r.includes('legend') || r.includes('classic')) return 'r-legend';
+  if (r.includes('shiny') || r.includes('amazing') || r.includes('radiant')) return 'r-shiny';
+  if (r.includes('holo') || r.includes('prime') || r.includes('prism') || r.includes('ex') || r.includes('gx') || r.includes(' v')) return 'r-rare-holo';
+  if (r === 'rare') return 'r-rare';
+  return 'r-none';
+}
+
+// For cards with rainbow rarity — add shimmer border class
+function isRainbowRarity(rarity) {
+  if (!rarity) return false;
+  const r = rarity.toLowerCase();
+  return r.includes('rainbow') || r.includes('hyper rare') || r.includes('special illustration');
+}
+
+// Short label for badge display
+function rarityLabel(rarity) {
+  if (!rarity || rarity === 'None') return '–';
+  const map = {
+    'Common': 'C',
+    'Uncommon': 'UC',
+    'Rare': 'R',
+    'Promo': 'Promo',
+    'Rare Holo': 'Holo',
+    'Double Rare': '2R',
+    'Ultra Rare': 'UR',
+    'Illustration Rare': 'IR',
+    'Special Illustration Rare': 'SIR',
+    'Hyper Rare': 'HR',
+    'Rare Rainbow': 'Rainbow',
+    'ACE SPEC Rare': 'ACE',
+    'Rare BREAK': 'BREAK',
+    'LEGEND': 'LEGEND',
+    'Amazing Rare': 'Amazing',
+    'Radiant Rare': 'Radiant',
+    'Shiny Rare': 'Shiny',
+    'Shiny Ultra Rare': 'ShinyUR',
+    'Rare Secret': 'Secret',
+  };
+  return map[rarity] || rarity.replace('Rare ', '').replace('Rare', 'R').substring(0, 12);
+}
+
+// ===================================================================
+// IMAGE PATH
+// ===================================================================
+function getImagePath(card) {
+  // Try local file first (set_id folder / card_id.jpg)
+  const setId = card.set_id;
+  const cardId = card.id;
+  return `/pokemon_card_images/${setId}/${cardId}.jpg`;
+}
+
+// ===================================================================
+// STATE
+// ===================================================================
+let currentSetId = null;
+let currentCards = [];
+let filteredCards = [];
+let searchQuery = '';
+let activeRarity = 'all';
+let activeSortBy = 'number';
+let modalIndex = -1;
+const cardCache = {};
+
+// Rarity rank for sort ordering (lower = more common)
+const RARITY_RANK = {
+  'Common': 1,
+  'Uncommon': 2,
+  'Rare': 3,
+  'Rare Holo': 4,
+  'Rare Holo EX': 5,
+  'Rare Holo GX': 5,
+  'Rare Holo V': 5,
+  'Rare Holo VMAX': 6,
+  'Rare Holo VSTAR': 6,
+  'Rare Holo LV.X': 5,
+  'Double Rare': 7,
+  'Rare Ultra': 8,
+  'Ultra Rare': 8,
+  'Illustration Rare': 9,
+  'Rare Rainbow': 10,
+  'Rare Secret': 10,
+  'ACE SPEC Rare': 10,
+  'Special Illustration Rare': 11,
+  'Hyper Rare': 12,
+  'Shiny Rare': 4,
+  'Shiny Ultra Rare': 8,
+  'Amazing Rare': 7,
+  'Radiant Rare': 7,
+  'LEGEND': 9,
+  'Promo': 0,
+};
+
+function rarityRank(rarity) {
+  return RARITY_RANK[rarity] ?? 3;
+}
+
+function parseCardNumber(num) {
+  // Handle numbers like "1", "001", "107a", "GG01", "TG01"
+  if (!num) return 9999;
+  const match = num.match(/^(\d+)/);
+  return match ? parseInt(match[1], 10) : 9999;
+}
+
+function sortCards(cards) {
+  const sorted = [...cards];
+  switch (activeSortBy) {
+    case 'number':
+      sorted.sort((a, b) => parseCardNumber(a.number) - parseCardNumber(b.number) || (a.number || '').localeCompare(b.number || ''));
+      break;
+    case 'number-desc':
+      sorted.sort((a, b) => parseCardNumber(b.number) - parseCardNumber(a.number) || (b.number || '').localeCompare(a.number || ''));
+      break;
+    case 'name':
+      sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      break;
+    case 'name-desc':
+      sorted.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+      break;
+    case 'rarity':
+      sorted.sort((a, b) => rarityRank(a.rarity) - rarityRank(b.rarity) || parseCardNumber(a.number) - parseCardNumber(b.number));
+      break;
+    case 'rarity-desc':
+      sorted.sort((a, b) => rarityRank(b.rarity) - rarityRank(a.rarity) || parseCardNumber(a.number) - parseCardNumber(b.number));
+      break;
+  }
+  return sorted;
+}
+
+// ===================================================================
+// SIDEBAR BUILDER
+// ===================================================================
+function buildSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const setInEra = new Set();
+
+  for (const [eraName, setIds] of Object.entries(ERAS)) {
+    const available = setIds.filter(id => AVAILABLE_SETS.includes(id));
+    if (available.length === 0) continue;
+
+    const section = document.createElement('div');
+    section.className = 'sidebar-era';
+
+    const label = document.createElement('div');
+    label.className = 'era-label';
+    label.textContent = eraName;
+    section.appendChild(label);
+
+    for (const setId of available) {
+      setInEra.add(setId);
+      section.appendChild(makeSetBtn(setId));
+    }
+    sidebar.appendChild(section);
+  }
+
+  // Catch-all: sets not in any era
+  const orphans = AVAILABLE_SETS.filter(id => !setInEra.has(id));
+  if (orphans.length > 0) {
+    const section = document.createElement('div');
+    section.className = 'sidebar-era';
+    const label = document.createElement('div');
+    label.className = 'era-label';
+    label.textContent = 'Other';
+    section.appendChild(label);
+    orphans.forEach(id => section.appendChild(makeSetBtn(id)));
+    sidebar.appendChild(section);
+  }
+}
+
+function makeSetBtn(setId) {
+  const btn = document.createElement('button');
+  btn.className = 'set-btn';
+  btn.dataset.setId = setId;
+  btn.id = 'setbtn-' + setId;
+
+  const nameEl = document.createElement('span');
+  nameEl.className = 'set-btn-name';
+  nameEl.textContent = SET_NAMES[setId] || setId;
+
+  const countEl = document.createElement('span');
+  countEl.className = 'set-btn-count';
+  countEl.textContent = '…';
+  countEl.id = 'setcount-' + setId;
+
+  btn.appendChild(nameEl);
+  btn.appendChild(countEl);
+  btn.addEventListener('click', () => loadSet(setId));
+  return btn;
+}
+
+// ===================================================================
+// SET LOADING
+// ===================================================================
+function loadSet(setId) {
+  // Update active state
+  document.querySelectorAll('.set-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.getElementById('setbtn-' + setId);
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+    activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  currentSetId = setId;
+  searchQuery = '';
+  activeSortBy = 'number';
+  document.getElementById('sortSelect').value = 'number';
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.remove('visible');
+
+  showSetView(setId);
+
+  if (cardCache[setId]) {
+    displayCards(cardCache[setId]);
+    return;
+  }
+
+  showLoading(true);
+
+  const path = `/pokemon_card_data/cards_by_set/${setId}.json`;
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', path, true);
+  xhr.onload = function() {
+    if (xhr.status === 0 || xhr.status === 200) {
+      try {
+        const cards = JSON.parse(xhr.responseText);
+        cardCache[setId] = cards;
+        // Update sidebar count
+        const countEl = document.getElementById('setcount-' + setId);
+        if (countEl) countEl.textContent = cards.length;
+        displayCards(cards);
+      } catch(e) {
+        showError('Failed to parse card data.');
+      }
+    } else {
+      showError('Could not load set data.');
+    }
+  };
+  xhr.onerror = function() {
+    showError('Could not load set data (network error).');
+  };
+  xhr.send();
+}
+
+function showSetView(setId) {
+  document.getElementById('homeView').classList.add('hidden');
+  document.getElementById('setView').classList.remove('hidden');
+  document.getElementById('setTitle').textContent = SET_NAMES[setId] || setId;
+  document.getElementById('setMeta').innerHTML = `<span>${setId.toUpperCase()}</span>`;
+}
+
+function showLoading(show) {
+  document.getElementById('loadingState').classList.toggle('hidden', !show);
+  document.getElementById('cardGrid').classList.toggle('hidden', show);
+  document.getElementById('emptyState').classList.add('hidden');
+}
+
+function showError(msg) {
+  showLoading(false);
+  document.getElementById('emptyState').classList.remove('hidden');
+  document.getElementById('emptyState').innerHTML = `<div class="empty-icon">⚠️</div><div>${msg}</div>`;
+}
+
+// ===================================================================
+// DISPLAY CARDS
+// ===================================================================
+function displayCards(cards) {
+  currentCards = cards;
+  showLoading(false);
+  applyFilters();
+}
+
+function applyFilters() {
+  const query = searchQuery.trim().toLowerCase();
+  filteredCards = currentCards.filter(card => {
+    const nameMatch = !query || card.name.toLowerCase().includes(query);
+    const rarityMatch = activeRarity === 'all' || card.rarity === activeRarity;
+    return nameMatch && rarityMatch;
+  });
+
+  filteredCards = sortCards(filteredCards);
+  renderCards(filteredCards);
+  document.getElementById('visibleCount').textContent = filteredCards.length.toLocaleString();
+
+  // Update set meta
+  if (currentSetId) {
+    document.getElementById('setMeta').innerHTML =
+      `<span>${SET_NAMES[currentSetId] || currentSetId}</span> &nbsp;·&nbsp; ${filteredCards.length} of ${currentCards.length} cards`;
+  }
+}
+
+function renderCards(cards) {
+  const grid = document.getElementById('cardGrid');
+  const empty = document.getElementById('emptyState');
+
+  if (cards.length === 0) {
+    grid.innerHTML = '';
+    empty.classList.remove('hidden');
+    empty.innerHTML = `<div class="empty-icon">🔍</div><div>No cards match your search</div>`;
+    return;
+  }
+
+  empty.classList.add('hidden');
+  grid.innerHTML = '';
+
+  // Build fragment for performance
+  const frag = document.createDocumentFragment();
+  cards.forEach((card, idx) => {
+    frag.appendChild(buildCardEl(card, idx));
+  });
+  grid.appendChild(frag);
+
+  // Animate in
+  grid.classList.add('fade-in');
+  setTimeout(() => grid.classList.remove('fade-in'), 300);
+}
+
+function buildCardEl(card, idx) {
+  const el = document.createElement('div');
+  el.className = 'poke-card';
+  if (isRainbowRarity(card.rarity)) el.classList.add('rarity-rainbow');
+
+  const imgSrc = getImagePath(card);
+  const rarityClass = getRarityClass(card.rarity);
+  const label = rarityLabel(card.rarity);
+
+  el.innerHTML = `
+    <div class="card-img-wrap">
+      <img class="card-img" src="${imgSrc}"
+           alt="${escHtml(card.name)}"
+           loading="lazy"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="card-img-placeholder" style="display:none">
+        <div class="placeholder-ball"></div>
+        <span>${escHtml(card.name)}</span>
+      </div>
+      <div class="card-overlay"><span class="overlay-hint">View Details</span></div>
+    </div>
+    <div class="card-info">
+      <div class="card-name" title="${escHtml(card.name)}">${escHtml(card.name)}</div>
+      <div class="card-footer">
+        <span class="card-number">#${escHtml(card.number || '–')}</span>
+        <span class="rarity-badge ${rarityClass}" title="${escHtml(card.rarity || '')}">${escHtml(label)}</span>
+      </div>
+    </div>
+  `;
+
+  el.addEventListener('click', () => openModal(idx));
+  return el;
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ===================================================================
+// MODAL
+// ===================================================================
+function openModal(idx) {
+  modalIndex = idx;
+  const card = filteredCards[idx];
+  if (!card) return;
+
+  const backdrop = document.getElementById('modalBackdrop');
+  const imgCol = document.getElementById('modalImgCol');
+  const imgSrc = getImagePath(card);
+  const rarityClass = getRarityClass(card.rarity);
+
+  imgCol.innerHTML = `
+    <img class="modal-img" src="${imgSrc}"
+         alt="${escHtml(card.name)}"
+         onerror="this.outerHTML='<div class=\\'modal-img-placeholder\\'><div class=\\'modal-img-placeholder-inner\\'><div style=\\'font-size:48px\\'>🃏</div><div style=\\'color:var(--text-muted);font-size:12px\\'>${escHtml(card.name)}</div></div></div>'">
+  `;
+
+  document.getElementById('modalName').textContent = card.name;
+  document.getElementById('modalSetName').textContent = card.set_name || SET_NAMES[card.set_id] || card.set_id || '';
+
+  document.getElementById('modalDetails').innerHTML = `
+    <div class="detail-row">
+      <span class="detail-label">Number</span>
+      <span class="detail-value">${escHtml(card.number || '–')}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Rarity</span>
+      <span class="modal-rarity-badge ${rarityClass}">${escHtml(card.rarity || 'Unknown')}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Set</span>
+      <span class="detail-value">${escHtml(card.set_name || SET_NAMES[card.set_id] || card.set_id || '–')}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Set ID</span>
+      <span class="detail-value" style="color:var(--text-muted);font-size:11px">${escHtml(card.set_id || '–')}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Card ID</span>
+      <span class="detail-value" style="color:var(--text-muted);font-size:11px">${escHtml(card.id || '–')}</span>
+    </div>
+  `;
+
+  document.getElementById('modalPrev').disabled = idx === 0;
+  document.getElementById('modalNext').disabled = idx === filteredCards.length - 1;
+
+  backdrop.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  document.body.style.overflow = '';
+  modalIndex = -1;
+}
+
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalBackdrop').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalBackdrop')) closeModal();
+});
+document.getElementById('modalPrev').addEventListener('click', () => {
+  if (modalIndex > 0) openModal(modalIndex - 1);
+});
+document.getElementById('modalNext').addEventListener('click', () => {
+  if (modalIndex < filteredCards.length - 1) openModal(modalIndex + 1);
+});
+
+document.addEventListener('keydown', e => {
+  if (document.getElementById('modalBackdrop').classList.contains('open')) {
+    if (e.key === 'Escape') closeModal();
+    if (e.key === 'ArrowLeft' && modalIndex > 0) openModal(modalIndex - 1);
+    if (e.key === 'ArrowRight' && modalIndex < filteredCards.length - 1) openModal(modalIndex + 1);
+  }
+});
+
+// ===================================================================
+// SEARCH
+// ===================================================================
+const searchInput = document.getElementById('searchInput');
+const searchClear = document.getElementById('searchClear');
+
+let searchTimeout;
+searchInput.addEventListener('input', () => {
+  searchQuery = searchInput.value;
+  searchClear.classList.toggle('visible', searchQuery.length > 0);
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    if (currentCards.length > 0) applyFilters();
+  }, 120);
+});
+
+searchClear.addEventListener('click', () => {
+  searchInput.value = '';
+  searchQuery = '';
+  searchClear.classList.remove('visible');
+  if (currentCards.length > 0) applyFilters();
+  searchInput.focus();
+});
+
+// ===================================================================
+// RARITY FILTER CHIPS
+// ===================================================================
+document.getElementById('rarityFilters').addEventListener('click', e => {
+  const chip = e.target.closest('.rarity-chip');
+  if (!chip) return;
+  document.querySelectorAll('.rarity-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  activeRarity = chip.dataset.rarity;
+  if (currentCards.length > 0) applyFilters();
+});
+
+document.getElementById('sortSelect').addEventListener('change', e => {
+  activeSortBy = e.target.value;
+  if (currentCards.length > 0) applyFilters();
+});
+
+// ===================================================================
+// HOME STATS — count sets and load a few card counts
+// ===================================================================
+function updateHomeStats() {
+  document.getElementById('homeSets').textContent = AVAILABLE_SETS.length;
+  // Show a rough card count from what we know
+  document.getElementById('homeCards').textContent = '30k+';
+}
+
+// ===================================================================
+// INIT
+// ===================================================================
+buildSidebar();
+updateHomeStats();
+
+// Pre-fetch sidebar counts for a couple of key sets in the background
+// (non-blocking, just for the count badges)
+function prefetchCount(setId) {
+  if (cardCache[setId]) return;
+  const path = `/pokemon_card_data/cards_by_set/${setId}.json`;
+  const xhr = new XMLHttpRequest();
+  xhr.open('GET', path, true);
+  xhr.onload = function() {
+    if (xhr.status === 0 || xhr.status === 200) {
+      try {
+        const cards = JSON.parse(xhr.responseText);
+        cardCache[setId] = cards;
+        const countEl = document.getElementById('setcount-' + setId);
+        if (countEl) countEl.textContent = cards.length;
+      } catch(e) {}
+    }
+  };
+  xhr.send();
+}
+
+// Prefetch most popular sets silently
+['sv8pt5','sv1','sv4','swsh8','sm12'].forEach(id => {
+  setTimeout(() => prefetchCount(id), 500 + Math.random() * 2000);
+});
+</script>
+</body>
+</html>
