@@ -1327,6 +1327,19 @@ function escHtml(str) {
 // ===================================================================
 // MODAL
 // ===================================================================
+function tcgPlayerCardUrl(card) {
+  const name = card.name || '';
+  const setName = card.set_name || SET_NAMES[card.set_id] || card.set_id || '';
+  return 'https://www.tcgplayer.com/search/pokemon/product?productLineName=pokemon&q=' +
+    encodeURIComponent(name) + '&setName=' + encodeURIComponent(setName);
+}
+
+function tcgPlayerSetUrl(card) {
+  const setName = card.set_name || SET_NAMES[card.set_id] || card.set_id || '';
+  return 'https://www.tcgplayer.com/search/pokemon/product?productLineName=pokemon&setName=' +
+    encodeURIComponent(setName) + '&view=grid';
+}
+
 function openModal(idx) {
   modalIndex = idx;
   const card = filteredCards[idx];
@@ -1366,6 +1379,15 @@ function openModal(idx) {
     <div class="detail-row">
       <span class="detail-label">Card ID</span>
       <span class="detail-value" style="color:var(--text-muted);font-size:11px">${escHtml(card.id || '–')}</span>
+    </div>
+    <div class="modal-divider"></div>
+    <div class="detail-row" style="flex-direction:column;gap:8px;align-items:flex-start">
+      <a href="${tcgPlayerCardUrl(card)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;background:#e8232a;color:#fff;font-weight:600;font-size:13px;padding:8px 14px;border-radius:8px;text-decoration:none;transition:opacity 0.15s" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+        View on TCGPlayer ↗
+      </a>
+      <a href="${tcgPlayerSetUrl(card)}" target="_blank" rel="noopener" style="font-size:12px;color:var(--text-muted);text-decoration:underline;text-underline-offset:2px">
+        Browse ${escHtml(card.set_name || SET_NAMES[card.set_id] || card.set_id || '')} on TCGPlayer
+      </a>
     </div>
   `;
 
